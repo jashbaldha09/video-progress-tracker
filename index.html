@@ -157,6 +157,26 @@
     .auth-form { display: grid; gap: 8px; margin-top: 20px; }
     .auth-form label { margin-top: 7px; color: var(--muted); font-size: 12px; }
     .auth-form .primary-button { margin-top: 10px; }
+    .password-control { display: grid; grid-template-columns: minmax(0, 1fr) 40px; align-items: stretch; gap: 6px; }
+    .password-control input { min-width: 0; }
+    .password-toggle { display: grid; place-items: center; width: 40px; min-height: 40px; padding: 0; }
+    .password-toggle svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
+    .password-toggle .eye-off-icon { display: none; }
+    .password-toggle[aria-pressed="true"] .eye-icon { display: none; }
+    .password-toggle[aria-pressed="true"] .eye-off-icon { display: block; }
+    .password-guidance { display: grid; gap: 7px; margin-top: 2px; }
+    .password-rules { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 10px; margin: 0; padding: 0; list-style: none; }
+    .password-rule { display: flex; align-items: baseline; gap: 5px; min-width: 0; color: var(--muted); font-size: 11px; line-height: 1.35; }
+    .password-rule[data-valid="true"] { color: var(--accent-dark); }
+    .password-rule-icon { flex: none; font-weight: 800; }
+    .password-strength { display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: 11px; }
+    .password-strength-meter { display: flex; flex: 1; max-width: 96px; gap: 3px; }
+    .password-strength-meter span { height: 4px; flex: 1; border-radius: 4px; background: var(--line); }
+    .password-strength[data-level="weak"] .password-strength-meter span:nth-child(1) { background: var(--danger); }
+    .password-strength[data-level="medium"] .password-strength-meter span:nth-child(-n+2) { background: var(--warm); }
+    .password-strength[data-level="strong"] .password-strength-meter span { background: var(--accent); }
+    .auth-field-message { min-height: 0; margin: 0; color: var(--muted); font-size: 11px; line-height: 1.4; }
+    .auth-field-message.error { color: var(--danger); }
     .auth-message { min-height: 20px; margin: 12px 0 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
     .auth-message.error { color: var(--danger); }
     .user-email { display: block; max-width: 220px; min-width: 0; overflow: hidden; color: var(--muted); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
@@ -214,6 +234,7 @@
     @media (max-width: 380px) {
       .auth-screen { padding: 14px; }
       .auth-panel { padding: 21px; }
+      .password-rules { grid-template-columns: 1fr; }
       .top-actions { gap: 5px; }
       .user-email { max-width: 32vw; }
       .stats .stat { padding: 10px; }
@@ -242,10 +263,39 @@
         <label for="authEmail">Email</label>
         <input id="authEmail" name="email" type="email" autocomplete="email" required>
         <label for="authPassword">Password</label>
-        <input id="authPassword" name="password" type="password" autocomplete="current-password" required>
+        <div class="password-control">
+          <input id="authPassword" name="password" type="password" autocomplete="current-password" required>
+          <button class="icon-button password-toggle" type="button" data-target="authPassword" aria-label="Show password" title="Show password" aria-pressed="false">
+            <svg class="eye-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            <svg class="eye-off-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 3 18 18M10.6 10.6a2 2 0 0 0 2.8 2.8"></path><path d="M9.9 5.2A10.8 10.8 0 0 1 12 5c6.4 0 10 7 10 7a16 16 0 0 1-3.1 3.8M6.2 6.2C3.5 8 2 12 2 12s3.6 7 10 7a10 10 0 0 0 3-.5"></path></svg>
+          </button>
+        </div>
+        <div class="password-guidance" id="passwordGuidance" hidden>
+          <span class="field-label" style="margin:0">Password requirements</span>
+          <ul class="password-rules" id="passwordRules">
+            <li class="password-rule" data-rule="length" data-valid="false"><span class="password-rule-icon" aria-hidden="true">○</span><span>At least 8 characters</span></li>
+            <li class="password-rule" data-rule="uppercase" data-valid="false"><span class="password-rule-icon" aria-hidden="true">○</span><span>One uppercase letter</span></li>
+            <li class="password-rule" data-rule="lowercase" data-valid="false"><span class="password-rule-icon" aria-hidden="true">○</span><span>One lowercase letter</span></li>
+            <li class="password-rule" data-rule="number" data-valid="false"><span class="password-rule-icon" aria-hidden="true">○</span><span>One number</span></li>
+            <li class="password-rule" data-rule="special" data-valid="false"><span class="password-rule-icon" aria-hidden="true">○</span><span>One special character</span></li>
+          </ul>
+          <div class="password-strength" id="passwordStrength" data-level="empty" role="status" aria-live="polite">
+            <span>Password strength</span>
+            <span class="password-strength-meter" aria-hidden="true"><span></span><span></span><span></span></span>
+            <strong id="passwordStrengthValue">Not set</strong>
+          </div>
+          <p class="auth-field-message" id="passwordValidationMessage" aria-live="polite"></p>
+        </div>
         <div id="confirmPasswordField" hidden>
           <label for="authConfirmPassword">Confirm password</label>
-          <input id="authConfirmPassword" name="confirmPassword" type="password" autocomplete="new-password">
+          <div class="password-control">
+            <input id="authConfirmPassword" name="confirmPassword" type="password" autocomplete="new-password">
+            <button class="icon-button password-toggle" type="button" data-target="authConfirmPassword" aria-label="Show password" title="Show password" aria-pressed="false">
+              <svg class="eye-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+              <svg class="eye-off-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 3 18 18M10.6 10.6a2 2 0 0 0 2.8 2.8"></path><path d="M9.9 5.2A10.8 10.8 0 0 1 12 5c6.4 0 10 7 10 7a16 16 0 0 1-3.1 3.8M6.2 6.2C3.5 8 2 12 2 12s3.6 7 10 7a10 10 0 0 0 3-.5"></path></svg>
+            </button>
+          </div>
+          <p class="auth-field-message" id="confirmPasswordMessage" aria-live="polite"></p>
         </div>
         <button class="primary-button" id="authSubmit" type="submit" disabled>Sign In</button>
       </form>
@@ -595,6 +645,7 @@
         workspaceLoad = null;
         projectsLoaded = false;
         projectsLoadError = false;
+        if (projectDialogMode === 'first-create') closeProjectDialog(true);
         render();
         return;
       }
@@ -624,6 +675,7 @@
           state.current = projects[0]?.id || null;
           projectsLoaded = true;
           render();
+          if (!projects.length && activeUser?.id === user.id) openProjectDialog('first-create');
         } catch (error) {
           console.error('Unable to load tracker data.', error);
           state.projects = [];
@@ -814,8 +866,9 @@
       const project = currentProject();
       const isDelete = mode === 'delete';
       const isRename = mode === 'rename';
-      $('projectDialogTitle').textContent = isDelete ? 'Delete project?' : isRename ? 'Rename project' : 'Create new project';
-      $('projectDialogCopy').textContent = isDelete ? 'This will remove this project and its tasks from your account.' : isRename ? 'Choose a name that is easy to recognize.' : 'Give this project a clear name.';
+      const isFirst = mode === 'first-create';
+      $('projectDialogTitle').textContent = isFirst ? 'Create your first project' : isDelete ? 'Delete project?' : isRename ? 'Rename project' : 'Create new project';
+      $('projectDialogCopy').textContent = isFirst ? 'Give your learning project a name.' : isDelete ? 'This will remove this project and its tasks from your account.' : isRename ? 'Choose a name that is easy to recognize.' : 'Give this project a clear name.';
       $('projectNameField').hidden = isDelete;
       $('projectDeleteCopy').hidden = !isDelete;
       $('projectDeleteCopy').textContent = isDelete ? `Delete “${project.name}” and all its tasks? This cannot be undone.` : '';
@@ -823,16 +876,21 @@
       $('projectNameInput').required = !isDelete;
       $('projectNameInput').setAttribute('aria-invalid', 'false');
       $('projectNameError').textContent = '';
-      $('projectDialogSubmit').textContent = isDelete ? 'Delete project' : isRename ? 'Save name' : 'Create project';
+      $('projectDialogSubmit').textContent = isFirst ? 'Create Project' : isDelete ? 'Delete project' : isRename ? 'Save name' : 'Create project';
       $('projectDialogSubmit').classList.toggle('danger-button', isDelete);
       $('projectDialogSubmit').classList.toggle('primary-button', !isDelete);
+      $('projectDialogClose').hidden = isFirst;
+      $('projectDialogCancel').hidden = isFirst;
       $('projectDialog').showModal();
       if (isDelete) $('projectDialogSubmit').focus();
       else $('projectNameInput').focus();
     }
 
-    function closeProjectDialog() {
+    function closeProjectDialog(force = false) {
+      if (projectDialogMode === 'first-create' && !force) return;
       if ($('projectDialog').open) $('projectDialog').close();
+      $('projectDialogClose').hidden = false;
+      $('projectDialogCancel').hidden = false;
       if (migrationResolver) {
         const resolve = migrationResolver;
         migrationResolver = null;
@@ -849,21 +907,22 @@
     $('projectDialogClose').addEventListener('click', closeProjectDialog);
     $('projectDialogCancel').addEventListener('click', closeProjectDialog);
     $('projectDialog').addEventListener('click', event => {
-      if (event.target === $('projectDialog')) closeProjectDialog();
+      if (event.target === $('projectDialog') && projectDialogMode !== 'first-create') closeProjectDialog();
     });
     $('projectDialog').addEventListener('cancel', event => {
       event.preventDefault();
-      closeProjectDialog();
+      if (projectDialogMode !== 'first-create') closeProjectDialog();
     });
     $('projectDialog').addEventListener('keydown', event => {
       if (event.key === 'Escape' && $('projectDialog').open) {
         event.preventDefault();
-        closeProjectDialog();
+        if (projectDialogMode !== 'first-create') closeProjectDialog();
       }
     });
     $('projectDialogForm').addEventListener('submit', async event => {
       event.preventDefault();
       const submit = $('projectDialogSubmit');
+      if (submit.disabled) return;
       submit.disabled = true;
       const previousText = submit.textContent;
       if (projectDialogMode === 'migration') {
@@ -917,12 +976,14 @@
         } finally { submit.disabled = false; submit.textContent = previousText; }
         return;
       }
+      submit.textContent = 'Creating...';
       try {
         const project = await createProject(name);
         state.projects.push(project);
         state.current = project.id;
-        render(); closeProjectDialog();
-        showToast('Project created successfully.', 'success');
+        render(); closeProjectDialog(true);
+        if (projectDialogMode === 'first-create') showToast('Your project is ready.', 'success');
+        else showToast('Project created successfully.', 'success');
       } catch (error) {
         console.error('Unable to create project.', error);
         $('projectNameError').textContent = 'Unable to create project.';
@@ -1185,6 +1246,58 @@
         authMessage.classList.toggle('error', isError);
       }
 
+      function passwordRules(value) {
+        return {
+          length: value.length >= 8,
+          uppercase: /[A-Z]/.test(value),
+          lowercase: /[a-z]/.test(value),
+          number: /[0-9]/.test(value),
+          special: /[^A-Za-z0-9\s]/.test(value)
+        };
+      }
+
+      function updatePasswordGuidance() {
+        const password = $('authPassword').value;
+        const rules = passwordRules(password);
+        const passed = Object.values(rules).filter(Boolean).length;
+        Object.entries(rules).forEach(([name, valid]) => {
+          const item = $('passwordRules').querySelector(`[data-rule="${name}"]`);
+          item.dataset.valid = String(valid);
+          item.querySelector('.password-rule-icon').textContent = valid ? '✓' : '○';
+        });
+        const level = !password ? 'empty' : passed === 5 ? 'strong' : passed >= 3 ? 'medium' : 'weak';
+        const strengthLabel = level === 'empty' ? 'Not set' : level[0].toUpperCase() + level.slice(1);
+        $('passwordStrength').dataset.level = level;
+        $('passwordStrengthValue').textContent = strengthLabel;
+        const passwordMessage = $('passwordValidationMessage');
+        passwordMessage.textContent = password && passed < 5 ? 'Meet all five requirements to continue.' : '';
+        passwordMessage.classList.toggle('error', Boolean(password) && passed < 5);
+        updateConfirmPasswordMessage();
+        return passed === 5;
+      }
+
+      function updateConfirmPasswordMessage() {
+        const confirmation = $('authConfirmPassword').value;
+        const message = $('confirmPasswordMessage');
+        const mismatch = Boolean(confirmation) && confirmation !== $('authPassword').value;
+        message.textContent = mismatch ? 'Passwords do not match.' : '';
+        message.classList.toggle('error', mismatch);
+        return !mismatch;
+      }
+
+      function setPasswordVisibility(input, visible) {
+        const toggle = document.querySelector(`.password-toggle[data-target="${input.id}"]`);
+        input.type = visible ? 'text' : 'password';
+        toggle.setAttribute('aria-pressed', String(visible));
+        toggle.setAttribute('aria-label', visible ? 'Hide password' : 'Show password');
+        toggle.title = visible ? 'Hide password' : 'Show password';
+      }
+
+      function hidePasswords() {
+        setPasswordVisibility($('authPassword'), false);
+        setPasswordVisibility($('authConfirmPassword'), false);
+      }
+
       function setAuthMode(mode) {
         authMode = mode;
         const signingUp = mode === 'signup';
@@ -1194,7 +1307,10 @@
         $('authPassword').autocomplete = signingUp ? 'new-password' : 'current-password';
         $('authConfirmPassword').required = signingUp;
         confirmPasswordField.hidden = !signingUp;
+        $('passwordGuidance').hidden = !signingUp;
         $('authSubmit').textContent = signingUp ? 'Sign Up' : 'Sign In';
+        hidePasswords();
+        updatePasswordGuidance();
         document.title = `${signingUp ? 'Sign Up' : 'Sign In'} | Video Progress Tracker`;
         setAuthMessage('');
       }
@@ -1221,6 +1337,14 @@
 
       $('signInTab').addEventListener('click', () => setAuthMode('signin'));
       $('signUpTab').addEventListener('click', () => setAuthMode('signup'));
+      document.querySelectorAll('.password-toggle').forEach(toggle => {
+        toggle.addEventListener('click', () => {
+          const input = $(toggle.dataset.target);
+          setPasswordVisibility(input, input.type === 'password');
+        });
+      });
+      $('authPassword').addEventListener('input', updatePasswordGuidance);
+      $('authConfirmPassword').addEventListener('input', updateConfirmPasswordMessage);
       $('logoutButton').addEventListener('click', async () => {
         if (!authClient) return;
         const { error } = await authClient.auth.signOut();
@@ -1238,9 +1362,22 @@
           setAuthMessage('Supabase Auth is not configured. Set SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY on the backend.', true);
           return;
         }
-        if (authMode === 'signup' && password !== $('authConfirmPassword').value) {
-          setAuthMessage('Passwords do not match.', true);
-          return;
+        if (authMode === 'signup') {
+          if (!updatePasswordGuidance()) {
+            $('passwordValidationMessage').textContent = 'Password does not meet all five requirements.';
+            $('passwordValidationMessage').classList.add('error');
+            setAuthMessage('Choose a password that meets all listed requirements.', true);
+            $('authPassword').focus();
+            return;
+          }
+          if (password !== $('authConfirmPassword').value) {
+            updateConfirmPasswordMessage();
+            $('confirmPasswordMessage').textContent = 'Passwords do not match.';
+            $('confirmPasswordMessage').classList.add('error');
+            setAuthMessage('Confirm password must match.', true);
+            $('authConfirmPassword').focus();
+            return;
+          }
         }
 
         const submit = $('authSubmit');
@@ -1248,12 +1385,19 @@
         setAuthMessage(authMode === 'signup' ? 'Creating your account...' : 'Signing in...');
         try {
           if (authMode === 'signup') {
-            const { data, error } = await authClient.auth.signUp({ email, password });
+            const { data, error } = await authClient.auth.signUp({
+              email,
+              password,
+              options: { emailRedirectTo: window.location.origin }
+            });
             if (error) throw error;
             if (data.user && !data.session && data.user.identities?.length === 0) {
               setAuthMessage('An account with this email already exists. Sign in instead.', true);
             } else {
               authForm.reset();
+              hidePasswords();
+              updatePasswordGuidance();
+              updateConfirmPasswordMessage();
               setAuthMode('signin');
               if (data.session) showSession(data.session);
               else showSession(null);
