@@ -101,7 +101,7 @@
     .toggle-slot[hidden] { display: none; }
     .theme-toggle { font-size: 18px; }
     .user-account { display: flex; align-items: center; gap: 8px; min-width: 0; }
-    .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 11px; margin-bottom: 16px; }
+    .stats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 11px; margin-bottom: 16px; }
     .stat { min-width: 0; padding: 15px 16px; border: 1px solid var(--line); border-radius: 9px; background: var(--paper); }
     .stat-label { color: var(--muted); font-size: 12px; }
     .stat-value { display: block; margin-top: 7px; font-size: 22px; font-weight: 750; overflow-wrap: anywhere; }
@@ -418,6 +418,7 @@
     let workspaceLoad = null;
     let projectsLoaded = false;
     let projectsLoadError = false;
+    const taskCompletionSaves = new Map();
     const toastTimers = new Map();
 
     function showToast(message, type = 'info') {
@@ -771,14 +772,20 @@
       const project = currentProject();
       const tasks = project.tasks;
       const completed = tasks.filter(task => task.done).length;
+      const remainingTasks = tasks.length - completed;
       const totalSeconds = tasks.reduce((sum, task) => sum + task.sec, 0);
       const remainingSeconds = tasks.filter(task => !task.done).reduce((sum, task) => sum + task.sec, 0);
       const percent = tasks.length ? Math.round(completed / tasks.length * 100) : 0;
       const stats = [
-        ['Total tasks', tasks.length], ['Completed', completed],
+        ['Total tasks', tasks.length], ['Completed', completed], ['Remaining tasks', remainingTasks],
         ['Total duration', formatDuration(totalSeconds)], ['Still to watch', formatDuration(remainingSeconds)]
       ];
-      $('stats').innerHTML = stats.map(([label, value]) => `<div class="stat"><span class="stat-label">${label}</span><strong class="stat-value">${value}</strong></div>`).join('');
+      const statValues = $('stats').querySelectorAll('.stat-value');
+      if (statValues.length !== stats.length) {
+        $('stats').innerHTML = stats.map(([label, value]) => `<div class="stat"><span class="stat-label">${label}</span><strong class="stat-value">${value}</strong></div>`).join('');
+      } else {
+        stats.forEach(([, value], index) => { statValues[index].textContent = value; });
+      }
       $('progressLabel').textContent = `${percent}% complete`;
       $('progressFill').style.width = `${percent}%`;
 
@@ -793,6 +800,25 @@
         const remainingDays = Math.ceil(remainingSeconds / effectiveDaily);
         $('planResult').innerHTML = `<strong>${formatDuration(remainingSeconds)}</strong> left to watch.<br>At <strong>${speed}x</strong>, your daily time covers about <strong>${formatDuration(effectiveDaily)}</strong> of video. Estimated time remaining: <strong>${remainingDays} ${remainingDays === 1 ? 'day' : 'days'}</strong>.`;
       }
+    }
+
+    function updateTaskCompletionUI(project, task) {
+      const scrollX = window.scrollX;
+      const scrollY = window.scrollY;
+      const projectItem = [...$('projectList').children].find(item => item.dataset.projectId === project.id);
+      if (projectItem) {
+        const completed = project.tasks.filter(item => item.done).length;
+        projectItem.querySelector('.project-count').textContent = `${completed}/${project.tasks.length}`;
+      }
+      if (currentProject()?.id === project.id) {
+        const row = [...$('taskList').querySelectorAll('[data-task-id]')].find(item => item.dataset.taskId === task.id);
+        if (row) {
+          row.classList.toggle('done', task.done);
+          row.querySelector('input[type="checkbox"]').checked = task.done;
+        }
+        renderStats();
+      }
+      window.scrollTo(scrollX, scrollY);
     }
 
     function render() {
@@ -1070,23 +1096,53 @@
         showToast('Unable to delete task.', 'error');
       }
     });
-    $('taskList').addEventListener('change', async event => {
+    $('taskList').addEventListener('change', event => {
       const row = event.target.closest('[data-task-id]');
       if (!row || !event.target.matches('input[type="checkbox"]')) return;
-      const checkbox = event.target;
-      checkbox.disabled = true;
-      try {
-        const task = await updateTask(row.dataset.taskId, { done: checkbox.checked });
-        const index = currentProject().tasks.findIndex(item => item.id === task.id);
-        if (index >= 0) currentProject().tasks[index] = task;
-        render(); showToast(task.done ? 'Task completed.' : 'Task marked incomplete.', 'success');
-      } catch (error) {
-        console.error('Unable to update task completion.', error);
-        checkbox.checked = !checkbox.checked;
-        checkbox.disabled = false;
-        showToast('Unable to update task.', 'error');
+      const project = currentProject();
+      const task = project?.tasks.find(item => item.id === row.dataset.taskId);
+      if (!task || task.done === event.target.checked) return;
+
+      let save = taskCompletionSaves.get(task.id);
+      if (!save) {
+        save = { confirmedDone: task.done, revision: 0, persistedRevision: 0, saving: false };
+        taskCompletionSaves.set(task.id, save);
       }
+      save.revision++;
+      task.done = event.target.checked;
+      updateTaskCompletionUI(project, task);
+      void persistTaskCompletion(project, task, save);
     });
+
+    async function persistTaskCompletion(project, task, save) {
+      if (save.saving) return;
+      save.saving = true;
+      try {
+        while (save.persistedRevision < save.revision) {
+          const revision = save.revision;
+          const done = task.done;
+          try {
+            const updated = await updateTask(task.id, { done });
+            save.confirmedDone = updated.done;
+            save.persistedRevision = revision;
+          } catch (error) {
+            save.persistedRevision = revision;
+            if (save.revision === revision) {
+              task.done = save.confirmedDone;
+              updateTaskCompletionUI(project, task);
+              showToast("Couldn't save the change. Please try again.", 'error');
+            }
+          }
+        }
+      } finally {
+        save.saving = false;
+        if (save.persistedRevision < save.revision) {
+          void persistTaskCompletion(project, task, save);
+        } else if (taskCompletionSaves.get(task.id) === save) {
+          taskCompletionSaves.delete(task.id);
+        }
+      }
+    }
     async function persistDailyTime() {
       const input = $('dailyTime');
       if (!currentProject()) return;
