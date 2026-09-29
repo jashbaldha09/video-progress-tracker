@@ -1,0 +1,1311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f3f7f5">
+  <meta name="description" content="Plan your learning, track video progress, and keep every project moving.">
+  <meta property="og:title" content="Video Progress Tracker">
+  <meta property="og:description" content="Plan your learning and track progress through video projects.">
+  <meta property="og:type" content="website">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23167d68'/%3E%3Cpath d='M16 44V31h8v13zm12 0V20h8v24zm12 0V26h8v18z' fill='white'/%3E%3C/svg%3E">
+  <title>Video Progress Tracker</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f3f7f5;
+      --paper: #ffffff;
+      --ink: #192b28;
+      --muted: #6a7c77;
+      --line: #dce7e2;
+      --accent: #167d68;
+      --accent-dark: #0f6252;
+      --accent-pale: #e4f3ee;
+      --warm: #d98550;
+      --danger: #b64343;
+      --shadow: 0 16px 44px rgba(34, 66, 56, .08);
+      --sidebar-width: 280px;
+    }
+    :root[data-theme="dark"] {
+      color-scheme: dark;
+      --bg: #111b19;
+      --paper: #192522;
+      --ink: #e8f1ed;
+      --muted: #a2b4ad;
+      --line: #31433d;
+      --accent: #67c5a9;
+      --accent-dark: #8bd8c1;
+      --accent-pale: #233c34;
+      --warm: #e4a072;
+      --danger: #f18e8e;
+      --shadow: 0 16px 44px rgba(0, 0, 0, .2);
+    }
+    * { box-sizing: border-box; }
+    html { min-height: 100%; overflow-x: clip; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      min-height: 100dvh;
+      color: var(--ink);
+      background: radial-gradient(ellipse at 76% 0%, rgba(217, 133, 80, .09), transparent 32rem), var(--bg);
+      font-family: "Segoe UI", Tahoma, sans-serif;
+    }
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+    button:focus-visible, input:focus-visible, select:focus-visible, .project-item:focus-visible, dialog:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 55%, transparent); outline-offset: 2px; }
+    .app { display: flex; min-height: 100vh; min-height: 100dvh; }
+    .sidebar {
+      position: sticky; top: 0; flex: 0 0 var(--sidebar-width); width: var(--sidebar-width); min-width: 0; height: 100vh; height: 100dvh;
+      display: flex; flex-direction: column; gap: 24px; padding: 24px 16px 18px; overflow-x: hidden; overflow-y: auto;
+      background: var(--paper); border-right: 1px solid var(--line); z-index: 5;
+      transition: flex-basis .24s ease, width .24s ease, padding .24s ease, opacity .18s ease, transform .24s ease;
+    }
+    .app.sidebar-collapsed .sidebar { flex-basis: 0; width: 0; padding-right: 0; padding-left: 0; border-right: 0; opacity: 0; pointer-events: none; }
+    .sidebar-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; width: 100%; min-width: 0; }
+    .brand { display: flex; align-items: center; gap: 11px; min-width: 0; padding: 0 7px; }
+    .sidebar-header .brand { flex: 1; padding: 0; }
+    .brand-mark { flex: 0 0 36px; width: 36px; height: 36px; display: grid; place-items: center; background: var(--accent); color: #fff; border-radius: 11px; font-weight: 800; }
+    .brand-name { display: block; font-size: 14px; font-weight: 750; line-height: 1.25; overflow-wrap: anywhere; }
+    .brand-caption { display: block; margin-top: 2px; color: var(--muted); font-size: 11px; }
+    .projects-section { display: flex; flex: 1; flex-direction: column; min-height: 0; width: 100%; }
+    .side-heading { display: flex; justify-content: space-between; align-items: center; gap: 8px; width: 100%; min-width: 0; padding: 0 2px; color: var(--muted); font-size: 11px; font-weight: 750; text-transform: uppercase; letter-spacing: .08em; }
+    .sidebar-footer { width: 100%; margin-top: auto; padding-top: 12px; border-top: 1px solid var(--line); }
+    .new-project-button { width: 100%; text-align: left; font-weight: 650; }
+    .icon-button, .quiet-button, .primary-button, .danger-button {
+      min-height: 38px; border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; color: var(--ink); background: var(--paper); transition: border-color .18s, background .18s, transform .18s;
+    }
+    .icon-button { width: 34px; min-height: 32px; padding: 0; font-size: 18px; line-height: 1; }
+    .icon-button:hover, .quiet-button:hover, .danger-button:hover { border-color: var(--accent); }
+    .primary-button { color: #fff; border-color: var(--accent); background: var(--accent); font-weight: 700; }
+    .primary-button:hover { background: var(--accent-dark); }
+    :root[data-theme="dark"] .primary-button { color: #10221d; }
+    .danger-button { color: var(--danger); }
+    .project-list { display: grid; align-content: start; gap: 4px; width: 100%; min-width: 0; min-height: 0; margin-top: 10px; overflow-x: hidden; overflow-y: auto; }
+    .project-item { display: flex; width: 100%; min-width: 0; justify-content: space-between; align-items: center; gap: 8px; padding: 10px 9px; border-radius: 7px; color: var(--muted); cursor: pointer; }
+    .project-item:hover { background: var(--bg); color: var(--ink); }
+    .project-item.active { color: var(--accent-dark); background: var(--accent-pale); font-weight: 700; }
+    .project-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .project-count { flex: none; font-size: 11px; }
+    .main { flex: 1 1 0%; width: 100%; max-width: 1160px; min-width: 0; margin: 0 auto; padding: 34px clamp(18px, 4vw, 52px) 48px; }
+    .app.sidebar-collapsed .main { max-width: none; }
+    .topline { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 29px; }
+    .eyebrow { margin: 0 0 6px; color: var(--accent); font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; }
+    .heading-row { display: flex; align-items: flex-start; gap: 10px; min-width: 0; flex: 1; }
+    .project-heading { min-width: 0; }
+    h1 { overflow-wrap: anywhere; margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: clamp(28px, 4vw, 38px); font-weight: 500; line-height: 1.12; }
+    .project-tools { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
+    .project-tools button { min-height: 30px; padding: 5px 9px; font-size: 12px; }
+    .top-actions { display: flex; flex: none; flex-wrap: wrap; align-items: center; gap: 8px; justify-content: flex-end; max-width: 52%; }
+    .sidebar-toggle { display: grid; flex: none; place-content: center; gap: 3px; width: 38px; height: 38px; padding: 0; }
+    .sidebar-toggle span { display: block; width: 16px; height: 2px; border-radius: 2px; background: currentColor; }
+    .toggle-slot[hidden] { display: none; }
+    .theme-toggle { font-size: 18px; }
+    .user-account { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 11px; margin-bottom: 16px; }
+    .stat { min-width: 0; padding: 15px 16px; border: 1px solid var(--line); border-radius: 9px; background: var(--paper); }
+    .stat-label { color: var(--muted); font-size: 12px; }
+    .stat-value { display: block; margin-top: 7px; font-size: 22px; font-weight: 750; overflow-wrap: anywhere; }
+    .progress-panel { margin-bottom: 16px; padding: 18px 20px; border: 1px solid var(--line); border-radius: 9px; background: var(--paper); box-shadow: var(--shadow); }
+    .progress-head { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 10px; color: var(--muted); font-size: 13px; }
+    .progress-head strong { color: var(--ink); }
+    .progress-track { height: 9px; overflow: hidden; border-radius: 20px; background: var(--bg); }
+    .progress-fill { width: 0; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--accent), #80b98b); transition: width .3s ease; }
+    .content-grid { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(260px, .85fr); align-items: start; gap: 16px; }
+    .column { display: grid; gap: 16px; min-width: 0; }
+    .panel { min-width: 0; padding: 19px; border: 1px solid var(--line); border-radius: 9px; background: var(--paper); }
+    .panel-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 15px; }
+    h2 { margin: 0; font-size: 16px; font-weight: 750; }
+    .panel-note { color: var(--muted); font-size: 12px; }
+    .task-form { display: grid; grid-template-columns: minmax(0, 1fr) 130px auto; gap: 8px; }
+    input, select { width: 100%; min-height: 40px; padding: 9px 11px; border: 1px solid var(--line); border-radius: 7px; color: var(--ink); background: var(--bg); }
+    textarea { width: 100%; min-height: 92px; padding: 10px 11px; resize: vertical; border: 1px solid var(--line); border-radius: 7px; color: var(--ink); background: var(--bg); font: inherit; line-height: 1.45; }
+    input:focus, select:focus { outline: 2px solid color-mix(in srgb, var(--accent) 35%, transparent); border-color: var(--accent); }
+    textarea:focus { outline: 2px solid color-mix(in srgb, var(--accent) 35%, transparent); border-color: var(--accent); }
+    .field-label { display: block; margin: 13px 0 6px; color: var(--muted); font-size: 12px; }
+    .message { min-height: 17px; margin: 9px 0 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
+    .message.error { color: var(--danger); }
+    .task-list { margin-top: 10px; }
+    .bulk-tasks { margin-top: 15px; padding-top: 12px; border-top: 1px solid var(--line); }
+    .bulk-tasks summary { color: var(--accent-dark); cursor: pointer; font-size: 13px; font-weight: 700; }
+    .bulk-tasks form { display: grid; gap: 8px; margin-top: 10px; }
+    .task { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto auto; align-items: center; gap: 10px; min-height: 52px; border-top: 1px solid var(--line); }
+    .task input[type="checkbox"] { width: 17px; min-height: 17px; accent-color: var(--accent); }
+    .task-name { overflow-wrap: anywhere; font-size: 14px; }
+    .task.done .task-name { color: var(--muted); text-decoration: line-through; }
+    .task-duration { color: var(--muted); font-size: 12px; white-space: nowrap; }
+    .task-link { color: var(--accent-dark); font-size: 12px; white-space: nowrap; }
+    .task-remove { border: 0; padding: 5px; color: var(--muted); background: transparent; font-size: 12px; }
+    .task-remove:hover { color: var(--danger); }
+    .empty { padding: 22px 8px; color: var(--muted); text-align: center; font-size: 13px; }
+    .planner-grid { display: grid; grid-template-columns: minmax(0, 1fr) 112px; gap: 9px; }
+    .planner-result { margin: 13px 0 0; padding: 12px; border-radius: 7px; color: var(--muted); background: var(--bg); font-size: 13px; line-height: 1.6; }
+    .planner-result strong { color: var(--ink); }
+    .yt-preview { margin-top: 12px; padding: 13px; border: 1px solid var(--line); border-radius: 7px; background: var(--bg); }
+    .yt-preview-title { margin: 0 0 5px; font-weight: 700; overflow-wrap: anywhere; }
+    .yt-preview-meta { color: var(--muted); font-size: 12px; line-height: 1.55; }
+    .yt-actions { display: flex; gap: 8px; margin-top: 12px; }
+    .hidden { display: none !important; }
+    [hidden] { display: none !important; }
+    .auth-screen { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+    .auth-panel { width: min(440px, 100%); padding: 30px; border: 1px solid var(--line); border-radius: 9px; background: var(--paper); box-shadow: var(--shadow); }
+    .auth-heading { margin-bottom: 24px; }
+    .auth-heading h1 { margin-bottom: 8px; font-size: 30px; }
+    .auth-heading p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.5; }
+    .auth-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 8px; background: var(--bg); }
+    .auth-tab { min-height: 36px; border: 0; border-radius: 6px; color: var(--muted); background: transparent; font-weight: 650; }
+    .auth-tab[aria-selected="true"] { color: var(--ink); background: var(--paper); box-shadow: 0 1px 4px rgba(25, 43, 40, .12); }
+    .auth-form { display: grid; gap: 8px; margin-top: 20px; }
+    .auth-form label { margin-top: 7px; color: var(--muted); font-size: 12px; }
+    .auth-form .primary-button { margin-top: 10px; }
+    .auth-message { min-height: 20px; margin: 12px 0 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+    .auth-message.error { color: var(--danger); }
+    .user-email { display: block; max-width: 220px; min-width: 0; overflow: hidden; color: var(--muted); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+    dialog { width: min(440px, calc(100vw - 32px)); max-height: min(90vh, 680px); max-height: min(90dvh, 680px); padding: 0; overflow: auto; border: 1px solid var(--line); border-radius: 10px; color: var(--ink); background: var(--paper); box-shadow: var(--shadow); }
+    dialog::backdrop { background: rgba(8, 19, 16, .48); backdrop-filter: blur(2px); }
+    .dialog-form { padding: clamp(20px, 5vw, 28px); }
+    .dialog-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; margin-bottom: 18px; }
+    .dialog-head h2 { font-size: 20px; }
+    .dialog-copy { margin: 7px 0 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+    .dialog-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+    .dialog-error { min-height: 18px; margin: 8px 0 0; color: var(--danger); font-size: 12px; }
+    .toast-region { position: fixed; z-index: 90; top: 16px; right: 16px; display: grid; gap: 8px; width: min(380px, calc(100vw - 32px)); pointer-events: none; }
+    .toast { display: grid; grid-template-columns: 4px minmax(0, 1fr) 30px; align-items: stretch; min-height: 52px; overflow: hidden; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); box-shadow: var(--shadow); pointer-events: auto; animation: toast-in .18s ease-out both; }
+    .toast-mark { background: var(--accent); }
+    .toast[data-type="success"] .toast-mark { background: var(--ok, #167d68); }
+    .toast[data-type="error"] .toast-mark { background: var(--danger); }
+    .toast[data-type="warning"] .toast-mark { background: var(--warm); }
+    .toast-message { align-self: center; padding: 12px 13px; font-size: 13px; line-height: 1.4; overflow-wrap: anywhere; }
+    .toast-close { align-self: stretch; border: 0; padding: 0; color: var(--muted); background: transparent; font-size: 18px; }
+    @keyframes toast-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+    .overlay { display: none; }
+    @media (max-width: 1023px) {
+      .app { display: block; }
+      .sidebar { position: fixed; left: 0; top: 0; width: min(var(--sidebar-width), 86vw); height: 100vh; height: 100dvh; transform: translateX(-105%); box-shadow: var(--shadow); }
+      .app:not(.sidebar-collapsed) .sidebar { flex-basis: min(var(--sidebar-width), 86vw); width: min(var(--sidebar-width), 86vw); padding: 24px 16px 18px; border-right: 1px solid var(--line); opacity: 1; transform: translateX(0); pointer-events: auto; }
+      .app.sidebar-collapsed .sidebar { flex-basis: min(var(--sidebar-width), 86vw); width: min(var(--sidebar-width), 86vw); padding: 24px 16px 18px; border-right: 1px solid var(--line); opacity: 1; transform: translateX(-105%); }
+      .app:not(.sidebar-collapsed) .overlay { display: block; position: fixed; inset: 0; z-index: 4; background: rgba(8, 19, 16, .38); }
+      .main { padding-top: 24px; }
+      .content-grid { grid-template-columns: minmax(0, 1fr) minmax(245px, .8fr); }
+    }
+    @media (max-width: 760px) {
+      .topline { flex-wrap: wrap; }
+      .top-actions { flex: 1 1 100%; max-width: none; justify-content: flex-start; }
+      .content-grid { grid-template-columns: 1fr; }
+      .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 680px) {
+      .main { padding: 18px 14px 32px; }
+      .topline { align-items: flex-start; margin-bottom: 22px; }
+      .heading-row { align-items: flex-start; }
+      .top-actions { gap: 6px; }
+      .user-email { max-width: min(38vw, 180px); }
+      .stats { gap: 8px; }
+      .stat { padding: 12px; }
+      .stat-value { font-size: 19px; }
+      .content-grid { grid-template-columns: 1fr; }
+      .panel { padding: 16px; }
+      .task-form { grid-template-columns: minmax(0, 1fr) 112px; }
+      .task-form button { grid-column: 1 / -1; }
+      .task { grid-template-columns: 20px minmax(0, 1fr) auto auto; gap: 7px; padding: 7px 0; }
+      .task-duration { grid-column: 3; grid-row: 1; }
+      .task-link { grid-column: 2; grid-row: 2; }
+      .task-remove { grid-column: 4; grid-row: 1 / span 2; }
+    }
+    @media (max-width: 380px) {
+      .auth-screen { padding: 14px; }
+      .auth-panel { padding: 21px; }
+      .top-actions { gap: 5px; }
+      .user-email { max-width: 32vw; }
+      .stats .stat { padding: 10px; }
+      .stat-value { font-size: 18px; }
+      .panel { padding: 13px; }
+      .task-form { grid-template-columns: minmax(0, 1fr) 94px; }
+      .task { gap: 5px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <section class="auth-screen" id="authScreen" aria-labelledby="authTitle">
+    <div class="auth-panel">
+      <div class="brand auth-heading">
+        <div class="brand-mark" aria-hidden="true">P</div>
+        <div><h1 id="authTitle">Video Progress Tracker</h1><p id="authSubtitle">Sign in to continue to your workspace.</p></div>
+      </div>
+      <div class="auth-tabs" role="tablist" aria-label="Authentication">
+        <button class="auth-tab" id="signInTab" type="button" role="tab" aria-selected="true">Sign In</button>
+        <button class="auth-tab" id="signUpTab" type="button" role="tab" aria-selected="false">Sign Up</button>
+      </div>
+      <form class="auth-form" id="authForm">
+        <label for="authEmail">Email</label>
+        <input id="authEmail" name="email" type="email" autocomplete="email" required>
+        <label for="authPassword">Password</label>
+        <input id="authPassword" name="password" type="password" autocomplete="current-password" required>
+        <div id="confirmPasswordField" hidden>
+          <label for="authConfirmPassword">Confirm password</label>
+          <input id="authConfirmPassword" name="confirmPassword" type="password" autocomplete="new-password">
+        </div>
+        <button class="primary-button" id="authSubmit" type="submit" disabled>Sign In</button>
+      </form>
+      <p class="auth-message" id="authMessage" aria-live="polite">Checking your session...</p>
+    </div>
+  </section>
+  <div class="app" id="app" hidden>
+    <aside class="sidebar" id="sidebar" aria-label="Projects">
+        <div class="sidebar-header">
+          <div class="brand">
+            <div class="brand-mark" aria-hidden="true">P</div>
+            <div><span class="brand-name">Video Progress Tracker</span><span class="brand-caption">A steady way forward</span></div>
+          </div>
+          <div class="toggle-slot" id="sidebarToggleSlot">
+            <button class="icon-button sidebar-toggle" id="sidebarToggle" type="button" aria-label="Collapse sidebar" title="Collapse sidebar" aria-controls="sidebar" aria-expanded="true"><span></span><span></span><span></span></button>
+          </div>
+        </div>
+      <section class="projects-section">
+        <div class="side-heading"><span>Projects</span></div>
+        <nav class="project-list" id="projectList" aria-label="Project list"></nav>
+      </section>
+      <div class="sidebar-footer"><button class="quiet-button new-project-button" id="newProject" type="button">+ New Project</button></div>
+    </aside>
+    <button class="overlay" id="overlay" type="button" aria-label="Close project menu"></button>
+    <main class="main">
+      <div class="topline">
+        <div class="heading-row">
+          <div class="toggle-slot" id="mainToggleSlot" hidden></div>
+          <div class="project-heading"><p class="eyebrow">Video Progress Tracker</p><h1 id="projectTitle">My First Project</h1>
+            <div class="project-tools"><button class="quiet-button" id="renameProject" type="button">Rename project</button><button class="danger-button" id="deleteProject" type="button">Delete project</button></div>
+          </div>
+        </div>
+        <div class="top-actions">
+          <button class="icon-button theme-toggle" id="themeToggle" type="button" aria-label="Switch to dark mode" title="Switch to dark mode">☀</button>
+          <div class="user-account"><span class="user-email" id="userEmail"></span><button class="quiet-button" id="logoutButton" type="button">Log out</button></div>
+        </div>
+      </div>
+
+      <section class="stats" id="stats" aria-label="Project summary"></section>
+      <section class="progress-panel" aria-label="Completion progress">
+        <div class="progress-head"><span><strong>Project progress</strong></span><span id="progressLabel">0% complete</span></div>
+        <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+      </section>
+
+      <div class="content-grid">
+        <div class="column">
+          <section class="panel">
+            <div class="panel-heading"><h2>Add a task</h2><span class="panel-note">20 sec · 1.20 min · 3.20.10 = 3:10:20</span></div>
+            <form class="task-form" id="taskForm">
+              <input id="taskName" type="text" maxlength="180" placeholder="What are you learning?" aria-label="Task name" required>
+              <input id="taskDuration" type="text" inputmode="decimal" placeholder="Duration" aria-label="Task duration" required>
+              <button class="primary-button" type="submit">Add task</button>
+            </form>
+            <p class="message" id="taskMessage" aria-live="polite"></p>
+            <details class="bulk-tasks">
+              <summary>Add multiple tasks</summary>
+              <form id="bulkTaskForm">
+                <label class="field-label" for="bulkTaskInput">One task per line: task name | duration</label>
+                <textarea id="bulkTaskInput" placeholder="Chapter 1 | 1.20&#10;Chapter 2 | 3.20.10"></textarea>
+                <button class="quiet-button" type="submit">Add tasks</button>
+                <p class="message" id="bulkTaskMessage" aria-live="polite"></p>
+              </form>
+            </details>
+          </section>
+          <section class="panel">
+            <div class="panel-heading"><h2>Tasks</h2><span class="panel-note" id="taskCount"></span></div>
+            <div class="task-list" id="taskList"></div>
+          </section>
+        </div>
+
+        <div class="column">
+          <section class="panel">
+            <div class="panel-heading"><h2>Study plan</h2></div>
+            <label class="field-label" for="dailyTime">Time available each day</label>
+            <div class="planner-grid">
+              <input id="dailyTime" type="text" inputmode="decimal" placeholder="e.g. 1.5" aria-label="Daily study time">
+              <select id="dailyUnit" aria-label="Daily time unit"><option value="hours">Hours</option><option value="minutes">Minutes</option><option value="seconds">Seconds</option></select>
+            </div>
+            <label class="field-label" for="speedMultiplier">Playback speed</label>
+            <select id="speedMultiplier" aria-label="Playback speed">
+              <option value="0.5">0.5x</option><option value="0.75">0.75x</option><option value="1">1x</option><option value="1.25">1.25x</option><option value="1.5">1.5x</option><option value="1.75">1.75x</option><option value="2">2x</option><option value="2.5">2.5x</option><option value="3">3x</option>
+            </select>
+            <p class="planner-result" id="planResult" aria-live="polite">Add tasks and set your daily study time to see an estimate.</p>
+          </section>
+          <section class="panel">
+            <div class="panel-heading"><h2>YouTube playlist</h2></div>
+            <label class="field-label" for="playlistUrl">Public playlist URL</label>
+            <input id="playlistUrl" type="url" placeholder="https://youtube.com/playlist?list=..." aria-label="YouTube playlist URL">
+            <button class="quiet-button" id="previewPlaylist" type="button" style="margin-top:9px;width:100%">Find videos</button>
+            <p class="message" id="playlistMessage" aria-live="polite"></p>
+            <div class="yt-preview hidden" id="playlistPreview">
+              <p class="yt-preview-title" id="playlistTitle"></p>
+              <div class="yt-preview-meta" id="playlistMeta"></div>
+              <div class="yt-actions"><button class="primary-button" id="importPlaylist" type="button">Add videos</button><button class="quiet-button" id="cancelImport" type="button">Cancel</button></div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </main>
+  </div>
+  <dialog id="projectDialog" aria-labelledby="projectDialogTitle">
+    <form class="dialog-form" id="projectDialogForm" novalidate>
+      <div class="dialog-head"><div><h2 id="projectDialogTitle">Create project</h2><p class="dialog-copy" id="projectDialogCopy">Give this project a clear name.</p></div><button class="icon-button" id="projectDialogClose" type="button" aria-label="Close dialog" title="Close dialog">×</button></div>
+      <div id="projectNameField"><label class="field-label" for="projectNameInput">Project name</label><input id="projectNameInput" maxlength="100" autocomplete="off" placeholder="e.g. Frontend fundamentals"><p class="dialog-error" id="projectNameError" aria-live="polite"></p></div>
+      <p class="dialog-copy" id="projectDeleteCopy" hidden></p>
+      <div class="dialog-actions"><button class="quiet-button" id="projectDialogCancel" type="button">Cancel</button><button class="primary-button" id="projectDialogSubmit" type="submit">Create project</button></div>
+    </form>
+  </dialog>
+  <div class="toast-region" id="toastRegion" aria-live="polite" aria-atomic="false"></div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
+  <script>
+    'use strict';
+    const STORAGE_KEY = 'progressTrackerV1';
+    const THEME_KEY = 'progressTrackerTheme';
+    const SIDEBAR_SESSION_KEY = 'progressTrackerSidebarCollapsed';
+    const $ = id => document.getElementById(id);
+    let pendingVideos = null;
+    let authClient = null;
+    let activeUser = null;
+    let workspaceLoad = null;
+    let projectsLoaded = false;
+    let projectsLoadError = false;
+    const toastTimers = new Map();
+
+    function showToast(message, type = 'info') {
+      const duplicate = [...$('toastRegion').children].find(toast => toast.dataset.message === message && toast.dataset.type === type);
+      if (duplicate) {
+        clearTimeout(toastTimers.get(duplicate));
+        toastTimers.set(duplicate, setTimeout(() => duplicate.remove(), 4500));
+        return;
+      }
+      const toast = document.createElement('div');
+      toast.className = 'toast';
+      toast.dataset.type = type;
+      toast.dataset.message = message;
+      toast.setAttribute('role', type === 'error' ? 'alert' : 'status');
+      const mark = document.createElement('span');
+      mark.className = 'toast-mark';
+      mark.setAttribute('aria-hidden', 'true');
+      const text = document.createElement('span');
+      text.className = 'toast-message';
+      text.textContent = message;
+      const close = document.createElement('button');
+      close.className = 'toast-close';
+      close.type = 'button';
+      close.setAttribute('aria-label', 'Dismiss notification');
+      close.textContent = '×';
+      const dismiss = () => {
+        clearTimeout(toastTimers.get(toast));
+        toastTimers.delete(toast);
+        toast.remove();
+      };
+      close.addEventListener('click', dismiss);
+      toast.append(mark, text, close);
+      $('toastRegion').append(toast);
+      if ($('toastRegion').children.length > 4) {
+        const oldest = $('toastRegion').firstElementChild;
+        clearTimeout(toastTimers.get(oldest));
+        toastTimers.delete(oldest);
+        oldest.remove();
+      }
+      toastTimers.set(toast, setTimeout(dismiss, 4500));
+    }
+
+    function readLegacyState() {
+      try {
+        const stored = JSON.parse(localStorage.getItem(STORAGE_KEY));
+        return stored && Array.isArray(stored.projects) ? stored : null;
+      } catch (error) {
+        console.error('Unable to read legacy tracker data.', error);
+        return null;
+      }
+    }
+
+    function loadTheme() {
+      try {
+        const saved = localStorage.getItem(THEME_KEY) || readLegacyState()?.theme;
+        return ['light', 'dark'].includes(saved) ? saved : (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      } catch (error) {
+        return 'light';
+      }
+    }
+
+    let state = { projects: [], current: null, theme: loadTheme() };
+    const currentProject = () => state.projects.find(project => project.id === state.current) || state.projects[0];
+
+    function projectFromRow(row) {
+      return { id: row.id, name: row.name, daily: String(row.daily_study_time), dailyUnit: 'minutes', speedMultiplier: 1, tasks: [], tasksLoaded: false };
+    }
+
+    function taskFromRow(row) {
+      return { id: row.id, name: row.name, sec: Number(row.duration_seconds) || 0, done: Boolean(row.done), source: row.source_type || undefined, videoId: row.video_id || undefined, playlistId: row.playlist_id || undefined };
+    }
+
+    async function requireAuthenticatedUser() {
+      if (!authClient) throw new Error('Supabase is not configured.');
+      const { data, error } = await authClient.auth.getUser();
+      if (error) throw error;
+      if (!data.user) throw new Error('Your session has expired. Please sign in again.');
+      return data.user;
+    }
+
+    function reportDatabaseError(action, error) {
+      console.error(`Supabase ${action} failed.`, error);
+      throw error;
+    }
+
+    async function loadProjects() {
+      await requireAuthenticatedUser();
+      const { data, error } = await authClient.from('projects').select('id,user_id,name,daily_study_time,created_at,updated_at').order('created_at', { ascending: true });
+      if (error) reportDatabaseError('project load', error);
+      return (data || []).map(projectFromRow);
+    }
+
+    async function loadTasks(projectId) {
+      await requireAuthenticatedUser();
+      const { data, error } = await authClient.from('tasks').select('id,project_id,name,duration_seconds,done,source_type,video_id,playlist_id,created_at,updated_at').eq('project_id', projectId).order('created_at', { ascending: true });
+      if (error) reportDatabaseError('task load', error);
+      return (data || []).map(taskFromRow);
+    }
+
+    async function createProject(name) {
+      const user = await requireAuthenticatedUser();
+      const { data, error } = await authClient.from('projects').insert({ user_id: user.id, name, daily_study_time: 60 }).select('id,user_id,name,daily_study_time,created_at,updated_at').single();
+      if (error) reportDatabaseError('project create', error);
+      return { ...projectFromRow(data), tasksLoaded: true };
+    }
+
+    async function updateProject(projectId, changes) {
+      await requireAuthenticatedUser();
+      const values = { ...changes, updated_at: new Date().toISOString() };
+      const { data, error } = await authClient.from('projects').update(values).eq('id', projectId).select('id,user_id,name,daily_study_time,created_at,updated_at').single();
+      if (error) reportDatabaseError('project update', error);
+      return projectFromRow(data);
+    }
+
+    async function deleteProject(projectId) {
+      await requireAuthenticatedUser();
+      const { error } = await authClient.from('projects').delete().eq('id', projectId);
+      if (error) reportDatabaseError('project delete', error);
+    }
+
+    async function createTasks(projectId, tasks) {
+      await requireAuthenticatedUser();
+      const rows = tasks.map(task => ({
+        project_id: projectId,
+        name: task.name,
+        duration_seconds: task.sec,
+        done: Boolean(task.done),
+        source_type: task.source || null,
+        video_id: task.videoId || null,
+        playlist_id: task.playlistId || null
+      }));
+      const { data, error } = await authClient.from('tasks').insert(rows).select('id,project_id,name,duration_seconds,done,source_type,video_id,playlist_id,created_at,updated_at');
+      if (error) reportDatabaseError('task create', error);
+      return (data || []).map(taskFromRow);
+    }
+
+    async function updateTask(taskId, changes) {
+      await requireAuthenticatedUser();
+      const { data, error } = await authClient.from('tasks').update({ ...changes, updated_at: new Date().toISOString() }).eq('id', taskId).select('id,project_id,name,duration_seconds,done,source_type,video_id,playlist_id,created_at,updated_at').single();
+      if (error) reportDatabaseError('task update', error);
+      return taskFromRow(data);
+    }
+
+    async function deleteTask(taskId) {
+      await requireAuthenticatedUser();
+      const { error } = await authClient.from('tasks').delete().eq('id', taskId);
+      if (error) reportDatabaseError('task delete', error);
+    }
+
+    async function saveDailyStudyTime(projectId, value) {
+      const seconds = parseStudyTime(value, 'minutes');
+      if (!seconds) throw new Error('Enter a valid daily study time.');
+      return updateProject(projectId, { daily_study_time: Math.max(1, Math.round(seconds / 60)) });
+    }
+
+    async function migrateLocalStorageData(user) {
+      const legacy = readLegacyState();
+      if (!legacy?.projects?.length) return false;
+      const marker = `progressTrackerSupabaseMigrated_${user.id}`;
+      if (localStorage.getItem(marker) === 'true') return false;
+      const checkpointKey = `progressTrackerSupabaseMigration_${user.id}`;
+      let checkpoint = {};
+      try { checkpoint = JSON.parse(localStorage.getItem(checkpointKey)) || {}; } catch (error) { checkpoint = {}; }
+      checkpoint.projects ||= {};
+      checkpoint.tasks ||= {};
+      for (let projectIndex = 0; projectIndex < legacy.projects.length; projectIndex++) {
+        const oldProject = legacy.projects[projectIndex];
+        let projectId = checkpoint.projects[projectIndex];
+        if (!projectId) {
+          const dailySeconds = parseStudyTime(oldProject.daily, oldProject.dailyUnit || 'hours');
+          const result = await createProject(oldProject.name || 'Untitled project');
+          projectId = result.id;
+          checkpoint.projects[projectIndex] = projectId;
+          localStorage.setItem(checkpointKey, JSON.stringify(checkpoint));
+        }
+        const dailySeconds = parseStudyTime(oldProject.daily, oldProject.dailyUnit || 'hours');
+        await updateProject(projectId, { daily_study_time: dailySeconds ? Math.max(1, Math.round(dailySeconds / 60)) : 60 });
+        const oldTasks = Array.isArray(oldProject.tasks) ? oldProject.tasks : [];
+        checkpoint.tasks[projectIndex] ||= {};
+        const pending = oldTasks.filter((task, taskIndex) => !checkpoint.tasks[projectIndex][taskIndex]).map(task => ({
+          name: String(task.name || 'Untitled task'),
+          sec: Math.max(0, Number(task.sec) || 0),
+          done: Boolean(task.done),
+          source: task.source || null,
+          videoId: task.videoId || null,
+          playlistId: task.playlistId || null
+        }));
+        if (pending.length) {
+          const inserted = await createTasks(projectId, pending);
+          let insertedIndex = 0;
+          for (let taskIndex = 0; taskIndex < oldTasks.length; taskIndex++) {
+            if (checkpoint.tasks[projectIndex][taskIndex]) continue;
+            checkpoint.tasks[projectIndex][taskIndex] = inserted[insertedIndex++].id;
+          }
+          localStorage.setItem(checkpointKey, JSON.stringify(checkpoint));
+        }
+      }
+      localStorage.setItem(marker, 'true');
+      localStorage.removeItem(checkpointKey);
+      return true;
+    }
+
+    let migrationResolver = null;
+    function promptMigration() {
+      return new Promise(resolve => {
+        migrationResolver = resolve;
+        projectDialogMode = 'migration';
+        $('projectDialogTitle').textContent = 'Import existing tracker data?';
+        $('projectDialogCopy').textContent = 'Your browser has saved projects and tasks. Import them into this account before continuing? Your local backup will be kept.';
+        $('projectNameField').hidden = true;
+        $('projectDeleteCopy').hidden = true;
+        $('projectNameInput').required = false;
+        $('projectDialogSubmit').textContent = 'Import data';
+        $('projectDialogSubmit').classList.remove('danger-button');
+        $('projectDialogSubmit').classList.add('primary-button');
+        $('projectDialog').showModal();
+      });
+    }
+
+    async function activateUser(user) {
+      activeUser = user || null;
+      if (!user) {
+        state.projects = [];
+        state.current = null;
+        workspaceLoad = null;
+        projectsLoaded = false;
+        projectsLoadError = false;
+        render();
+        return;
+      }
+      if (workspaceLoad?.userId === user.id) return workspaceLoad.promise;
+      state.projects = [];
+      state.current = null;
+      projectsLoaded = false;
+      projectsLoadError = false;
+      render();
+      const promise = (async () => {
+        const marker = `progressTrackerSupabaseMigrated_${user.id}`;
+        const hasLegacy = Boolean(readLegacyState()?.projects?.length);
+        if (hasLegacy && localStorage.getItem(marker) !== 'true') {
+          const approved = await promptMigration();
+          if (approved && localStorage.getItem(marker) !== 'true') return;
+        }
+        if (activeUser?.id !== user.id) return;
+        try {
+          const projects = await loadProjects();
+          if (activeUser?.id !== user.id) return;
+          for (const project of projects) {
+            project.tasks = await loadTasks(project.id);
+            project.tasksLoaded = true;
+          }
+          if (activeUser?.id !== user.id) return;
+          state.projects = projects;
+          state.current = projects[0]?.id || null;
+          projectsLoaded = true;
+          render();
+        } catch (error) {
+          console.error('Unable to load tracker data.', error);
+          state.projects = [];
+          state.current = null;
+          projectsLoaded = true;
+          projectsLoadError = true;
+          render();
+          showToast('Unable to load projects.', 'error');
+        }
+      })();
+      workspaceLoad = { userId: user.id, promise };
+      await promise;
+      if (workspaceLoad?.userId === user.id) workspaceLoad = null;
+    }
+    function updateDocumentTitle() {
+      if (!$('app').hidden) document.title = `${currentProject().name} | Video Progress Tracker`;
+    }
+
+    function setSidebarCollapsed(collapsed, remember = true) {
+      $('app').classList.toggle('sidebar-collapsed', collapsed);
+      $('sidebar').inert = collapsed;
+      $('sidebar').setAttribute('aria-hidden', String(collapsed));
+      const toggle = $('sidebarToggle');
+      const slot = collapsed ? $('mainToggleSlot') : $('sidebarToggleSlot');
+      const otherSlot = collapsed ? $('sidebarToggleSlot') : $('mainToggleSlot');
+      slot.append(toggle);
+      slot.hidden = false;
+      otherSlot.hidden = true;
+      const label = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
+      toggle.setAttribute('aria-label', label);
+      toggle.setAttribute('title', label);
+      toggle.setAttribute('aria-expanded', String(!collapsed));
+      if (remember) {
+        try { sessionStorage.setItem(SIDEBAR_SESSION_KEY, String(collapsed)); } catch (error) {}
+      }
+    }
+    let savedSidebarState = null;
+    try { savedSidebarState = sessionStorage.getItem(SIDEBAR_SESSION_KEY); } catch (error) {}
+    setSidebarCollapsed(savedSidebarState === null ? matchMedia('(max-width: 1023px)').matches : savedSidebarState === 'true', false);
+    function saveTheme() {
+      try { localStorage.setItem(THEME_KEY, state.theme); } catch (error) { console.error('Unable to save theme preference.', error); }
+    }
+    const escapeHtml = value => String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
+
+    function parseDuration(value) {
+      const raw = String(value || '').trim().toLowerCase();
+      if (/^\d+$/.test(raw)) return Number(raw);
+      const dotClock = raw.split('.');
+      if (dotClock.length === 2 && dotClock.every(part => /^\d+$/.test(part))) {
+        const [minutes, seconds] = dotClock.map(Number);
+        return seconds < 60 ? minutes * 60 + seconds : null;
+      }
+      if (dotClock.length === 3 && dotClock.every(part => /^\d+$/.test(part))) {
+        const [hours, seconds, minutes] = dotClock.map(Number);
+        return seconds < 60 && minutes < 60 ? hours * 3600 + minutes * 60 + seconds : null;
+      }
+      const clock = raw.split(':');
+      if (clock.length === 2 && clock.every(part => /^\d+$/.test(part))) {
+        const [minutes, seconds] = clock.map(Number);
+        return seconds < 60 ? minutes * 60 + seconds : null;
+      }
+      if (clock.length === 3 && clock.every(part => /^\d+$/.test(part))) {
+        const [hours, minutes, seconds] = clock.map(Number);
+        return minutes < 60 && seconds < 60 ? hours * 3600 + minutes * 60 + seconds : null;
+      }
+      const unit = raw.match(/^(\d+(?:\.\d+)?)\s*(hours?|hrs?|h|minutes?|mins?|m|seconds?|secs?|s)$/);
+      if (!unit) return null;
+      const amount = Number(unit[1]);
+      const suffix = unit[2][0];
+      return amount * (suffix === 'h' ? 3600 : suffix === 'm' ? 60 : 1);
+    }
+
+    function parseStudyTime(value, defaultUnit) {
+      const raw = String(value || '').trim().toLowerCase();
+      if (!raw) return null;
+      const match = raw.match(/^(\d+(?:\.\d+)?)\s*(hours?|hrs?|h|minutes?|mins?|m|seconds?|secs?|s)?$/);
+      if (!match || Number(match[1]) <= 0) return null;
+      const unit = match[2] ? match[2][0] : defaultUnit[0];
+      return Number(match[1]) * (unit === 'h' ? 3600 : unit === 'm' ? 60 : 1);
+    }
+
+    function formatDuration(seconds) {
+      const total = Math.max(0, Math.round(seconds));
+      const hours = Math.floor(total / 3600);
+      const minutes = Math.floor((total % 3600) / 60);
+      const secs = total % 60;
+      if (hours) return `${hours}h ${minutes}m ${secs}s`;
+      if (minutes) return secs ? `${minutes}m ${secs}s` : `${minutes}m`;
+      return `${secs}s`;
+    }
+
+    function renderStats() {
+      const project = currentProject();
+      const tasks = project.tasks;
+      const completed = tasks.filter(task => task.done).length;
+      const totalSeconds = tasks.reduce((sum, task) => sum + task.sec, 0);
+      const remainingSeconds = tasks.filter(task => !task.done).reduce((sum, task) => sum + task.sec, 0);
+      const percent = tasks.length ? Math.round(completed / tasks.length * 100) : 0;
+      const stats = [
+        ['Total tasks', tasks.length], ['Completed', completed],
+        ['Total duration', formatDuration(totalSeconds)], ['Still to watch', formatDuration(remainingSeconds)]
+      ];
+      $('stats').innerHTML = stats.map(([label, value]) => `<div class="stat"><span class="stat-label">${label}</span><strong class="stat-value">${value}</strong></div>`).join('');
+      $('progressLabel').textContent = `${percent}% complete`;
+      $('progressFill').style.width = `${percent}%`;
+
+      const dailySeconds = parseStudyTime(project.daily, project.dailyUnit || 'hours');
+      const speed = Number(project.speedMultiplier) || 1;
+      if (!remainingSeconds) {
+        $('planResult').textContent = 'All caught up. There is no video time left to plan.';
+      } else if (!dailySeconds) {
+        $('planResult').textContent = 'Set your daily study time to estimate the time remaining.';
+      } else {
+        const effectiveDaily = dailySeconds * speed;
+        const remainingDays = Math.ceil(remainingSeconds / effectiveDaily);
+        $('planResult').innerHTML = `<strong>${formatDuration(remainingSeconds)}</strong> left to watch.<br>At <strong>${speed}x</strong>, your daily time covers about <strong>${formatDuration(effectiveDaily)}</strong> of video. Estimated time remaining: <strong>${remainingDays} ${remainingDays === 1 ? 'day' : 'days'}</strong>.`;
+      }
+    }
+
+    function render() {
+      const project = currentProject();
+      document.documentElement.dataset.theme = state.theme;
+      if (!project) {
+        $('projectList').replaceChildren();
+        $('projectTitle').textContent = !activeUser ? 'Sign in to continue' : !projectsLoaded ? 'Your projects' : projectsLoadError ? 'Projects unavailable' : 'No projects yet';
+        $('taskList').innerHTML = !activeUser ? '<div class="empty">Sign in to load your projects.</div>' : !projectsLoaded ? '<div class="empty">Loading your projects...</div>' : projectsLoadError ? '<div class="empty">Unable to load your projects. Check your connection and try again.</div>' : '<div class="empty">Create a project before adding tasks or importing a playlist.</div>';
+        $('taskCount').textContent = '';
+        $('stats').replaceChildren();
+        $('progressLabel').textContent = '0% complete';
+        $('progressFill').style.width = '0%';
+        $('planResult').textContent = 'Select a project to see your study plan.';
+        $('renameProject').disabled = true;
+        $('deleteProject').disabled = true;
+        $('taskForm').querySelector('button[type="submit"]').disabled = true;
+        $('bulkTaskForm').querySelector('button[type="submit"]').disabled = true;
+        $('dailyTime').disabled = true;
+        $('dailyUnit').disabled = true;
+        $('speedMultiplier').disabled = true;
+        $('importPlaylist').disabled = true;
+        if (pendingVideos && activeUser && projectsLoaded && !projectsLoadError) $('playlistMessage').textContent = 'Create a project before adding these videos.';
+        return;
+      }
+      $('renameProject').disabled = false;
+      $('deleteProject').disabled = false;
+      $('taskForm').querySelector('button[type="submit"]').disabled = false;
+      $('bulkTaskForm').querySelector('button[type="submit"]').disabled = false;
+      $('dailyTime').disabled = false;
+      $('dailyUnit').disabled = false;
+      $('speedMultiplier').disabled = false;
+      $('importPlaylist').disabled = !pendingVideos;
+      $('projectTitle').textContent = project.name;
+      $('projectTitle').title = project.name;
+      $('dailyTime').value = project.daily || '';
+      $('dailyUnit').value = project.dailyUnit || 'hours';
+      $('speedMultiplier').value = String(project.speedMultiplier || 1);
+      const themeAction = state.theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
+      $('themeToggle').textContent = state.theme === 'dark' ? '🌙' : '☀';
+      $('themeToggle').setAttribute('aria-label', themeAction);
+      $('themeToggle').title = themeAction;
+      $('projectList').innerHTML = state.projects.map(item => {
+        const complete = item.tasks.filter(task => task.done).length;
+        return `<div class="project-item ${item.id === project.id ? 'active' : ''}" data-project-id="${escapeHtml(item.id)}" tabindex="0" role="button" aria-current="${item.id === project.id ? 'page' : 'false'}"><span class="project-name">${escapeHtml(item.name)}</span><span class="project-count">${complete}/${item.tasks.length}</span></div>`;
+      }).join('');
+      $('taskCount').textContent = `${project.tasks.length} ${project.tasks.length === 1 ? 'task' : 'tasks'}`;
+      $('taskList').innerHTML = !project.tasksLoaded ? '<div class="empty">Loading project tasks...</div>' : project.tasks.length ? project.tasks.map(task => `
+        <div class="task ${task.done ? 'done' : ''}" data-task-id="${escapeHtml(task.id)}">
+          <input type="checkbox" aria-label="Mark ${escapeHtml(task.name)} complete" ${task.done ? 'checked' : ''}>
+          <span class="task-name">${escapeHtml(task.name)}${task.source === 'youtube' ? ' <span class="panel-note">YouTube</span>' : ''}</span>
+          <span class="task-duration">${formatDuration(task.sec)}</span>
+          ${task.videoId ? `<a class="task-link" href="https://www.youtube.com/watch?v=${encodeURIComponent(task.videoId)}" target="_blank" rel="noopener noreferrer">Open video</a>` : ''}
+          <button class="task-remove" type="button" aria-label="Remove ${escapeHtml(task.name)}">Remove</button>
+        </div>`).join('') : '<div class="empty">No tasks yet. Add one above or import a playlist.</div>';
+      renderStats();
+      updateDocumentTitle();
+    }
+
+    $('projectList').addEventListener('click', event => {
+      const item = event.target.closest('[data-project-id]');
+      if (!item) return;
+      selectProject(item.dataset.projectId);
+    });
+    $('projectList').addEventListener('keydown', event => {
+      if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.target.closest('[data-project-id]')?.click(); }
+    });
+    let projectDialogMode = 'create';
+    function openProjectDialog(mode) {
+      projectDialogMode = mode;
+      const project = currentProject();
+      const isDelete = mode === 'delete';
+      const isRename = mode === 'rename';
+      $('projectDialogTitle').textContent = isDelete ? 'Delete project?' : isRename ? 'Rename project' : 'Create new project';
+      $('projectDialogCopy').textContent = isDelete ? 'This will remove this project and its tasks from your account.' : isRename ? 'Choose a name that is easy to recognize.' : 'Give this project a clear name.';
+      $('projectNameField').hidden = isDelete;
+      $('projectDeleteCopy').hidden = !isDelete;
+      $('projectDeleteCopy').textContent = isDelete ? `Delete “${project.name}” and all its tasks? This cannot be undone.` : '';
+      $('projectNameInput').value = isRename ? project.name : '';
+      $('projectNameInput').required = !isDelete;
+      $('projectNameInput').setAttribute('aria-invalid', 'false');
+      $('projectNameError').textContent = '';
+      $('projectDialogSubmit').textContent = isDelete ? 'Delete project' : isRename ? 'Save name' : 'Create project';
+      $('projectDialogSubmit').classList.toggle('danger-button', isDelete);
+      $('projectDialogSubmit').classList.toggle('primary-button', !isDelete);
+      $('projectDialog').showModal();
+      if (isDelete) $('projectDialogSubmit').focus();
+      else $('projectNameInput').focus();
+    }
+
+    function closeProjectDialog() {
+      if ($('projectDialog').open) $('projectDialog').close();
+      if (migrationResolver) {
+        const resolve = migrationResolver;
+        migrationResolver = null;
+        resolve(false);
+      }
+      $('projectDialogForm').reset();
+      $('projectNameError').textContent = '';
+      $('projectNameInput').setAttribute('aria-invalid', 'false');
+    }
+
+    $('newProject').addEventListener('click', () => openProjectDialog('create'));
+    $('renameProject').addEventListener('click', () => openProjectDialog('rename'));
+    $('deleteProject').addEventListener('click', () => openProjectDialog('delete'));
+    $('projectDialogClose').addEventListener('click', closeProjectDialog);
+    $('projectDialogCancel').addEventListener('click', closeProjectDialog);
+    $('projectDialog').addEventListener('click', event => {
+      if (event.target === $('projectDialog')) closeProjectDialog();
+    });
+    $('projectDialog').addEventListener('cancel', event => {
+      event.preventDefault();
+      closeProjectDialog();
+    });
+    $('projectDialog').addEventListener('keydown', event => {
+      if (event.key === 'Escape' && $('projectDialog').open) {
+        event.preventDefault();
+        closeProjectDialog();
+      }
+    });
+    $('projectDialogForm').addEventListener('submit', async event => {
+      event.preventDefault();
+      const submit = $('projectDialogSubmit');
+      submit.disabled = true;
+      const previousText = submit.textContent;
+      if (projectDialogMode === 'migration') {
+        try {
+          await migrateLocalStorageData(activeUser);
+          const resolve = migrationResolver;
+          migrationResolver = null;
+          closeProjectDialog();
+          resolve?.(true);
+          showToast('Existing tracker data imported successfully.', 'success');
+        } catch (error) {
+          console.error('Unable to migrate legacy tracker data.', error);
+          $('projectDialogCopy').textContent = 'Import failed. Your local backup is still available. Check your connection and try again.';
+          showToast('Unable to import existing data.', 'error');
+        } finally { submit.disabled = false; }
+        return;
+      }
+      if (projectDialogMode === 'delete') {
+        const project = currentProject();
+        try {
+          await deleteProject(project.id);
+          state.projects = state.projects.filter(item => item.id !== project.id);
+          state.current = state.projects[0]?.id || null;
+          render(); closeProjectDialog();
+          showToast('Project deleted.', 'success');
+        } catch (error) {
+          console.error('Unable to delete project.', error);
+          showToast('Unable to delete project.', 'error');
+        } finally { submit.disabled = false; submit.textContent = previousText; }
+        return;
+      }
+      const name = $('projectNameInput').value.trim();
+      if (!name) {
+        submit.disabled = false;
+        $('projectNameError').textContent = 'Enter a project name to continue.';
+        $('projectNameInput').setAttribute('aria-invalid', 'true');
+        $('projectNameInput').focus();
+        return;
+      }
+      if (projectDialogMode === 'rename') {
+        try {
+          const project = await updateProject(currentProject().id, { name });
+          const current = currentProject();
+          Object.assign(current, project, { tasks: current.tasks, tasksLoaded: current.tasksLoaded, speedMultiplier: current.speedMultiplier });
+          render(); closeProjectDialog();
+          showToast('Project renamed successfully.', 'success');
+        } catch (error) {
+          console.error('Unable to rename project.', error);
+          $('projectNameError').textContent = 'Unable to rename project.';
+          showToast('Unable to rename project.', 'error');
+        } finally { submit.disabled = false; submit.textContent = previousText; }
+        return;
+      }
+      try {
+        const project = await createProject(name);
+        state.projects.push(project);
+        state.current = project.id;
+        render(); closeProjectDialog();
+        showToast('Project created successfully.', 'success');
+      } catch (error) {
+        console.error('Unable to create project.', error);
+        $('projectNameError').textContent = 'Unable to create project.';
+        showToast('Unable to create project.', 'error');
+      } finally { submit.disabled = false; submit.textContent = previousText; }
+    });
+    $('themeToggle').addEventListener('click', () => {
+      state.theme = state.theme === 'dark' ? 'light' : 'dark';
+      saveTheme(); render();
+    });
+    $('taskForm').addEventListener('submit', async event => {
+      event.preventDefault();
+      const name = $('taskName').value.trim();
+      const seconds = parseDuration($('taskDuration').value);
+      if (!name || !seconds || !Number.isFinite(seconds)) {
+        $('taskMessage').textContent = 'Enter a task name and a valid duration.';
+        $('taskMessage').classList.add('error');
+        showToast('Enter a task name and a valid duration.', 'error');
+        return;
+      }
+      const button = $('taskForm').querySelector('button[type="submit"]');
+      button.disabled = true;
+      try {
+        const [task] = await createTasks(currentProject().id, [{ name, sec: seconds, done: false }]);
+        currentProject().tasks.push(task);
+        render(); $('taskForm').reset();
+        $('taskMessage').textContent = '';
+        $('taskMessage').classList.remove('error');
+        $('taskName').focus();
+        showToast('Task added successfully', 'success');
+      } catch (error) {
+        console.error('Unable to save task.', error);
+        showToast('Unable to save task.', 'error');
+      } finally { button.disabled = false; }
+    });
+    $('bulkTaskForm').addEventListener('submit', async event => {
+      event.preventDefault();
+      const lines = $('bulkTaskInput').value.split(/\r?\n/).map((text, index) => ({ text: text.trim(), index })).filter(line => line.text);
+      if (!lines.length) {
+        $('bulkTaskMessage').textContent = 'Enter one or more task lines.';
+        $('bulkTaskMessage').classList.add('error');
+        showToast('Enter one or more task lines.', 'error');
+        return;
+      }
+      const tasks = [];
+      for (const line of lines) {
+        const separator = line.text.lastIndexOf('|');
+        const name = separator >= 0 ? line.text.slice(0, separator).trim() : '';
+        const seconds = separator >= 0 ? parseDuration(line.text.slice(separator + 1).trim()) : null;
+        if (!name || !seconds || !Number.isFinite(seconds)) {
+          $('bulkTaskMessage').textContent = `Line ${line.index + 1}: use task name | duration.`;
+          $('bulkTaskMessage').classList.add('error');
+          showToast(`Bulk task line ${line.index + 1} is invalid.`, 'error');
+          return;
+        }
+        tasks.push({ name, sec: seconds, done: false });
+      }
+      const button = $('bulkTaskForm').querySelector('button[type="submit"]');
+      button.disabled = true;
+      try {
+        currentProject().tasks.push(...await createTasks(currentProject().id, tasks));
+        render(); $('bulkTaskInput').value = '';
+        $('bulkTaskMessage').textContent = '';
+        $('bulkTaskMessage').classList.remove('error');
+        showToast(`Added ${tasks.length} tasks.`, 'success');
+      } catch (error) {
+        console.error('Unable to save bulk tasks.', error);
+        showToast('Unable to save tasks.', 'error');
+      } finally { button.disabled = false; }
+    });
+    $('taskList').addEventListener('click', async event => {
+      const row = event.target.closest('[data-task-id]');
+      if (!row || !event.target.matches('.task-remove')) return;
+      const button = event.target;
+      const taskName = currentProject().tasks.find(task => task.id === row.dataset.taskId)?.name;
+      button.disabled = true;
+      try {
+        await deleteTask(row.dataset.taskId);
+        currentProject().tasks = currentProject().tasks.filter(task => task.id !== row.dataset.taskId);
+        render(); showToast(taskName ? `Task deleted: ${taskName}` : 'Task deleted.', 'success');
+      } catch (error) {
+        console.error('Unable to delete task.', error);
+        button.disabled = false;
+        showToast('Unable to delete task.', 'error');
+      }
+    });
+    $('taskList').addEventListener('change', async event => {
+      const row = event.target.closest('[data-task-id]');
+      if (!row || !event.target.matches('input[type="checkbox"]')) return;
+      const checkbox = event.target;
+      checkbox.disabled = true;
+      try {
+        const task = await updateTask(row.dataset.taskId, { done: checkbox.checked });
+        const index = currentProject().tasks.findIndex(item => item.id === task.id);
+        if (index >= 0) currentProject().tasks[index] = task;
+        render(); showToast(task.done ? 'Task completed.' : 'Task marked incomplete.', 'success');
+      } catch (error) {
+        console.error('Unable to update task completion.', error);
+        checkbox.checked = !checkbox.checked;
+        checkbox.disabled = false;
+        showToast('Unable to update task.', 'error');
+      }
+    });
+    async function persistDailyTime() {
+      const input = $('dailyTime');
+      if (!currentProject()) return;
+      if (!input.value.trim()) {
+        showToast('Enter a valid daily study time.', 'error');
+        render();
+        return;
+      }
+      input.disabled = true;
+      try {
+        const project = await saveDailyStudyTime(currentProject().id, `${input.value} ${$('dailyUnit').value}`);
+        const current = currentProject();
+        Object.assign(current, project, { tasks: current.tasks, tasksLoaded: current.tasksLoaded, speedMultiplier: current.speedMultiplier });
+        render();
+      } catch (error) {
+        console.error('Unable to save daily study time.', error);
+        showToast('Unable to save daily study time.', 'error');
+      } finally { input.disabled = false; }
+    }
+    $('dailyTime').addEventListener('change', persistDailyTime);
+    $('dailyUnit').addEventListener('change', persistDailyTime);
+    $('speedMultiplier').addEventListener('change', event => {
+      if (!currentProject()) return;
+      currentProject().speedMultiplier = Number(event.target.value) || 1;
+      renderStats();
+    });
+
+    async function selectProject(projectId) {
+      const project = state.projects.find(item => item.id === projectId);
+      if (!project || (state.current === projectId && project.tasksLoaded)) return;
+      state.current = projectId;
+      project.tasks = [];
+      project.tasksLoaded = false;
+      render();
+      try {
+        project.tasks = await loadTasks(projectId);
+        project.tasksLoaded = true;
+        if (state.current === projectId) render();
+      } catch (error) {
+        console.error('Unable to load project tasks.', error);
+        if (state.current === projectId) $('taskList').innerHTML = '<div class="empty">Unable to load tasks. Select this project again to retry.</div>';
+        showToast('Unable to load tasks.', 'error');
+      }
+      if (window.innerWidth < 1024) setSidebarCollapsed(true);
+    }
+    $('sidebarToggle').addEventListener('click', () => {
+      setSidebarCollapsed(!$('app').classList.contains('sidebar-collapsed'));
+    });
+    $('overlay').addEventListener('click', () => {
+      setSidebarCollapsed(true);
+    });
+    window.addEventListener('resize', () => {
+      if (window.innerWidth < 1024 && !$('app').classList.contains('sidebar-collapsed')) setSidebarCollapsed(true);
+    });
+
+    function playlistIdFromUrl(value) {
+      try {
+        const url = new URL(value);
+        return url.searchParams.get('list') || '';
+      } catch (error) { return ''; }
+    }
+
+    async function fetchPlaylist(playlistId) {
+      let response;
+      try { response = await fetch(`/api/youtube/playlist?list=${encodeURIComponent(playlistId)}`); }
+      catch (error) { throw new Error('Cannot reach the local server. Start the app with npm start and try again.'); }
+      let data = {};
+      try { data = await response.json(); } catch (error) {}
+      if (!response.ok) throw new Error(data.error || 'Unable to load this playlist.');
+      return data;
+    }
+
+    $('previewPlaylist').addEventListener('click', async () => {
+      const playlistId = playlistIdFromUrl($('playlistUrl').value.trim());
+      pendingVideos = null;
+      $('playlistPreview').classList.add('hidden');
+      if (!playlistId) {
+        $('playlistMessage').textContent = 'Paste a YouTube playlist URL that includes a playlist ID.';
+        $('playlistMessage').classList.add('error');
+        showToast('Invalid playlist URL.', 'error');
+        return;
+      }
+      $('previewPlaylist').disabled = true;
+      $('playlistMessage').textContent = 'Loading videos...';
+      $('playlistMessage').classList.remove('error');
+      try {
+        const playlist = await fetchPlaylist(playlistId);
+        pendingVideos = playlist.videos.map(video => ({ ...video, playlistId }));
+        const total = pendingVideos.reduce((sum, video) => sum + video.sec, 0);
+        $('playlistTitle').textContent = playlist.title;
+        $('playlistMeta').textContent = `${pendingVideos.length} videos · ${formatDuration(total)}${playlist.inaccessible ? ` · ${playlist.inaccessible} unavailable videos skipped` : ''}`;
+        $('playlistPreview').classList.remove('hidden');
+        $('importPlaylist').disabled = !currentProject();
+        $('playlistMessage').textContent = '';
+      } catch (error) {
+        $('playlistMessage').textContent = error.message || 'Unable to load this playlist.';
+        $('playlistMessage').classList.add('error');
+        showToast($('playlistMessage').textContent, 'error');
+      } finally { $('previewPlaylist').disabled = false; }
+    });
+    $('importPlaylist').addEventListener('click', async () => {
+      if (!pendingVideos) return;
+      const project = currentProject();
+      if (!project) {
+        $('playlistMessage').textContent = 'Create a project before adding these videos.';
+        showToast('Create a project before importing videos.', 'error');
+        return;
+      }
+      const button = $('importPlaylist');
+      button.disabled = true;
+      let existingTasks;
+      let added = 0;
+      try {
+        existingTasks = await loadTasks(project.id);
+        const seenVideos = new Set(existingTasks.map(task => task.videoId).filter(Boolean));
+        const seenPairs = new Set(existingTasks.filter(task => task.videoId && task.playlistId).map(task => `${task.videoId}:${task.playlistId}`));
+        const tasksToInsert = [];
+        for (const video of pendingVideos) {
+          const pair = `${video.id}:${video.playlistId}`;
+          if (seenVideos.has(video.id) || seenPairs.has(pair)) continue;
+          tasksToInsert.push({ name: video.name, sec: video.sec, done: false, source: 'youtube', videoId: video.id, playlistId: video.playlistId });
+          seenVideos.add(video.id);
+          seenPairs.add(pair);
+        }
+        const insertedTasks = tasksToInsert.length ? await createTasks(project.id, tasksToInsert) : [];
+        project.tasks.push(...insertedTasks);
+        added = insertedTasks.length;
+        $('playlistMessage').textContent = `Added ${added} video${added === 1 ? '' : 's'}; skipped ${pendingVideos.length - added} duplicate${pendingVideos.length - added === 1 ? '' : 's'}.`;
+        pendingVideos = null;
+        $('playlistPreview').classList.add('hidden');
+        render();
+        showToast(`Playlist imported: ${added} video${added === 1 ? '' : 's'}.`, 'success');
+      } catch (error) {
+        console.error('Unable to import playlist tasks.', error);
+        try { project.tasks = await loadTasks(project.id); render(); } catch (reloadError) { console.error('Unable to refresh imported tasks.', reloadError); }
+        const errorCode = error?.code || error?.status;
+        $('playlistMessage').textContent = errorCode ? `Import failed (error ${errorCode}). Your playlist preview is still available to retry.` : 'Import failed. Your playlist preview is still available to retry.';
+        showToast('Unable to import playlist tasks.', 'error');
+      } finally { button.disabled = false; }
+    });
+    $('cancelImport').addEventListener('click', () => {
+      pendingVideos = null;
+      $('playlistPreview').classList.add('hidden');
+      $('playlistMessage').textContent = 'Import cancelled.';
+    });
+
+    render();
+
+    (() => {
+      const authForm = $('authForm');
+      const authMessage = $('authMessage');
+      const confirmPasswordField = $('confirmPasswordField');
+      let authMode = 'signin';
+
+      function setAuthMessage(message, isError = false) {
+        authMessage.textContent = message;
+        authMessage.classList.toggle('error', isError);
+      }
+
+      function setAuthMode(mode) {
+        authMode = mode;
+        const signingUp = mode === 'signup';
+        $('signInTab').setAttribute('aria-selected', String(!signingUp));
+        $('signUpTab').setAttribute('aria-selected', String(signingUp));
+        $('authSubtitle').textContent = signingUp ? 'Create an account to access your workspace.' : 'Sign in to continue to your workspace.';
+        $('authPassword').autocomplete = signingUp ? 'new-password' : 'current-password';
+        $('authConfirmPassword').required = signingUp;
+        confirmPasswordField.hidden = !signingUp;
+        $('authSubmit').textContent = signingUp ? 'Sign Up' : 'Sign In';
+        document.title = `${signingUp ? 'Sign Up' : 'Sign In'} | Video Progress Tracker`;
+        setAuthMessage('');
+      }
+
+      function showSession(session) {
+        const user = session?.user || null;
+        $('authScreen').hidden = Boolean(user);
+        $('app').hidden = !user;
+        $('userEmail').textContent = user?.email || '';
+        $('userEmail').title = user?.email || '';
+        if (!user) $('authPassword').value = '';
+        document.title = user ? `${currentProject()?.name || 'Video Progress Tracker'} | Video Progress Tracker` : `${authMode === 'signup' ? 'Sign Up' : 'Sign In'} | Video Progress Tracker`;
+      }
+
+      function authErrorMessage(error) {
+        const message = String(error?.message || '').toLowerCase();
+        if (message.includes('invalid login credentials') || message.includes('invalid credentials')) return 'Email or password is incorrect.';
+        if (message.includes('already registered') || message.includes('already exists') || message.includes('user exists')) return 'An account with this email already exists. Sign in instead.';
+        if (message.includes('password') && (message.includes('weak') || message.includes('short') || message.includes('characters'))) return 'Choose a stronger password that meets the project password requirements.';
+        if (message.includes('email') && (message.includes('invalid') || message.includes('valid'))) return 'Enter a valid email address.';
+        if (message.includes('fetch') || message.includes('network') || message.includes('failed to fetch')) return 'Could not reach Supabase. Check your connection and try again.';
+        return error?.message || 'Authentication failed. Try again.';
+      }
+
+      $('signInTab').addEventListener('click', () => setAuthMode('signin'));
+      $('signUpTab').addEventListener('click', () => setAuthMode('signup'));
+      $('logoutButton').addEventListener('click', async () => {
+        if (!authClient) return;
+        const { error } = await authClient.auth.signOut();
+        if (error) {
+          setAuthMessage(authErrorMessage(error), true);
+          showToast(authErrorMessage(error), 'error');
+        }
+      });
+
+      authForm.addEventListener('submit', async event => {
+        event.preventDefault();
+        const email = $('authEmail').value.trim();
+        const password = $('authPassword').value;
+        if (!authClient) {
+          setAuthMessage('Supabase Auth is not configured. Set SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY on the backend.', true);
+          return;
+        }
+        if (authMode === 'signup' && password !== $('authConfirmPassword').value) {
+          setAuthMessage('Passwords do not match.', true);
+          return;
+        }
+
+        const submit = $('authSubmit');
+        submit.disabled = true;
+        setAuthMessage(authMode === 'signup' ? 'Creating your account...' : 'Signing in...');
+        try {
+          if (authMode === 'signup') {
+            const { data, error } = await authClient.auth.signUp({ email, password });
+            if (error) throw error;
+            if (data.user && !data.session && data.user.identities?.length === 0) {
+              setAuthMessage('An account with this email already exists. Sign in instead.', true);
+            } else {
+              authForm.reset();
+              setAuthMode('signin');
+              if (data.session) showSession(data.session);
+              else showSession(null);
+              setAuthMessage(data.session ? '' : 'Sign in to continue.');
+              showToast(data.session ? 'Account created successfully.' : 'Account created successfully. Please sign in.', 'success');
+            }
+          } else {
+            const { error } = await authClient.auth.signInWithPassword({ email, password });
+            if (error) throw error;
+            setAuthMessage('');
+            showToast('Login successful.', 'success');
+          }
+        } catch (error) {
+          setAuthMessage(authErrorMessage(error), true);
+          showToast(authErrorMessage(error), 'error');
+        } finally {
+          submit.disabled = false;
+        }
+      });
+
+      async function initializeAuth() {
+        try {
+          document.title = 'Sign In | Video Progress Tracker';
+          if (!window.supabase?.createClient) throw new Error('The Supabase browser client did not load. Check your connection and reload.');
+          const response = await fetch('/api/auth/config');
+          const config = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(config.error || 'Supabase Auth configuration is unavailable.');
+          authClient = window.supabase.createClient(config.url, config.publishableKey, {
+            auth: { autoRefreshToken: true, detectSessionInUrl: true, persistSession: true }
+          });
+          authClient.auth.onAuthStateChange((event, session) => {
+            showSession(session);
+            void activateUser(session?.user || null);
+            if (event === 'SIGNED_OUT') {
+              setAuthMessage('Sign in or create an account to continue.');
+              showToast('Logout successful.', 'success');
+            }
+          });
+          const { data, error } = await authClient.auth.getSession();
+          if (error) throw error;
+          showSession(data.session);
+          await activateUser(data.session?.user || null);
+          $('authSubmit').disabled = false;
+          setAuthMessage(data.session ? '' : 'Sign in or create an account to continue.');
+        } catch (error) {
+          showSession(null);
+          setAuthMessage(authErrorMessage(error), true);
+        }
+      }
+
+      initializeAuth();
+    })();
+  </script>
+</body>
+</html>
