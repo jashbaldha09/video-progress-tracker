@@ -774,8 +774,9 @@
       const completed = tasks.filter(task => task.done).length;
       const remainingTasks = tasks.length - completed;
       const totalSeconds = tasks.reduce((sum, task) => sum + task.sec, 0);
+      const completedSeconds = tasks.filter(task => task.done).reduce((sum, task) => sum + task.sec, 0);
       const remainingSeconds = tasks.filter(task => !task.done).reduce((sum, task) => sum + task.sec, 0);
-      const percent = tasks.length ? Math.round(completed / tasks.length * 100) : 0;
+      const percent = totalSeconds ? Math.round(completedSeconds / totalSeconds * 100) : 0;
       const stats = [
         ['Total tasks', tasks.length], ['Completed', completed], ['Remaining tasks', remainingTasks],
         ['Total duration', formatDuration(totalSeconds)], ['Still to watch', formatDuration(remainingSeconds)]
