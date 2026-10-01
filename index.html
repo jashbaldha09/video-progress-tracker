@@ -147,6 +147,9 @@
     .hidden { display: none !important; }
     [hidden] { display: none !important; }
     .auth-screen { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+    .auth-loading { min-height: 100vh; display: grid; place-items: center; padding: 24px; color: var(--muted); font-size: 14px; text-align: center; }
+    .auth-loading-indicator { width: 22px; height: 22px; margin: 0 auto 10px; border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: auth-loading-spin .8s linear infinite; }
+    @keyframes auth-loading-spin { to { transform: rotate(360deg); } }
     .auth-panel { width: min(440px, 100%); padding: 30px; border: 1px solid var(--line); border-radius: 9px; background: var(--paper); box-shadow: var(--shadow); }
     .auth-heading { margin-bottom: 24px; }
     .auth-heading h1 { margin-bottom: 8px; font-size: 30px; }
@@ -249,7 +252,10 @@
   </style>
 </head>
 <body>
-  <section class="auth-screen" id="authScreen" aria-labelledby="authTitle">
+  <section class="auth-loading" id="authLoading" role="status" aria-live="polite">
+    <div><span class="auth-loading-indicator" aria-hidden="true"></span>Loading...</div>
+  </section>
+  <section class="auth-screen" id="authScreen" aria-labelledby="authTitle" hidden>
     <div class="auth-panel">
       <div class="brand auth-heading">
         <div class="brand-mark" aria-hidden="true">P</div>
@@ -639,8 +645,8 @@
     }
 
     async function activateUser(user) {
-      activeUser = user || null;
       if (!user) {
+        activeUser = null;
         state.projects = [];
         state.current = null;
         workspaceLoad = null;
@@ -650,6 +656,11 @@
         render();
         return;
       }
+      if (activeUser?.id === user.id) {
+        if (workspaceLoad?.userId === user.id) return workspaceLoad.promise;
+        if (projectsLoaded) return;
+      }
+      activeUser = user;
       if (workspaceLoad?.userId === user.id) return workspaceLoad.promise;
       state.projects = [];
       state.current = null;
@@ -1297,6 +1308,7 @@
       const authMessage = $('authMessage');
       const confirmPasswordField = $('confirmPasswordField');
       let authMode = 'signin';
+      let authInitialized = false;
 
       function setAuthMessage(message, isError = false) {
         authMessage.textContent = message;
@@ -1374,6 +1386,7 @@
 
       function showSession(session) {
         const user = session?.user || null;
+        $('authLoading').hidden = true;
         $('authScreen').hidden = Boolean(user);
         $('app').hidden = !user;
         $('userEmail').textContent = user?.email || '';
@@ -1477,7 +1490,6 @@
 
       async function initializeAuth() {
         try {
-          document.title = 'Sign In | Video Progress Tracker';
           if (!window.supabase?.createClient) throw new Error('The Supabase browser client did not load. Check your connection and reload.');
           const response = await fetch('/api/auth/config');
           const config = await response.json().catch(() => ({}));
@@ -1486,6 +1498,7 @@
             auth: { autoRefreshToken: true, detectSessionInUrl: true, persistSession: true }
           });
           authClient.auth.onAuthStateChange((event, session) => {
+            if (!authInitialized) return;
             showSession(session);
             void activateUser(session?.user || null);
             if (event === 'SIGNED_OUT') {
@@ -1495,11 +1508,13 @@
           });
           const { data, error } = await authClient.auth.getSession();
           if (error) throw error;
+          authInitialized = true;
           showSession(data.session);
           await activateUser(data.session?.user || null);
           $('authSubmit').disabled = false;
           setAuthMessage(data.session ? '' : 'Sign in or create an account to continue.');
         } catch (error) {
+          authInitialized = true;
           showSession(null);
           setAuthMessage(authErrorMessage(error), true);
         }
